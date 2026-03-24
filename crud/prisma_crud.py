@@ -110,7 +110,7 @@ class PrismaCrudService:
         items: Iterable[InvoiceItemInput],
     ):
         normalized_items = list(items)
-        total_amount = sum((item.unit_price * item.quantity for item in normalized_items), Decimal("0.00"))
+        total_amount = sum((item.unit_price * Decimal(str(item.quantity)) for item in normalized_items), Decimal("0.00"))
 
         create_data = {
             "invoice_number": invoice_number,
@@ -123,7 +123,7 @@ class PrismaCrudService:
                         "product_id": item.product_id,
                         "quantity": item.quantity,
                         "unit_price": item.unit_price,
-                        "line_total": item.unit_price * item.quantity,
+                        "line_total": item.unit_price * Decimal(str(item.quantity)),
                     }
                     for item in normalized_items
                 ]
