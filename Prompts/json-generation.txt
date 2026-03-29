@@ -1,0 +1,28 @@
+You are a senior software engineer.
+
+Context:
+I need you to create a new seed but for generating json of a daily invoices set
+ of the db. 
+ 
+ Goal:
+ I want the seed file create a json with all the information 
+ regarding the invoice, customer, employee, which items bought and all 
+ important data. The function must be iterative for the 30 days data we have. 
+
+ Instructions:
+ On the prisma crud 
+ 
+ 1. Create a function that will pull all the dates since when we have invoices and 
+ the date of the last invoice
+ 2. create a function that will iterate over the dates and pull all the invoices for that date ( day by day)
+ 3. for each day, create a json object that each first level key will be the id of the invoice and the value will be a json object with all the information regarding the invoice, customer, employee, which items bought and all important data.
+ 4. save the json object to a file with the name of the date.
+ 5. return the json object.
+
+ Example:
+ 2026-03-20.json
+ 2026-03-21.json
+ 2026-03-22.json
+ 2026-03-23.json
+ 2026-03-24.json
+ 2026-03-25.json

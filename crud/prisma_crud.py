@@ -143,3 +143,39 @@ class PrismaCrudService:
             },
             order={"invoice_date": "desc"},
         )
+
+    async def get_invoice_date_range(self) -> tuple[date | None, date | None]:
+        """Get the first and last invoice dates from the database."""
+        first_invoice = await self.db.invoice.find_first(
+            order={"invoice_date": "asc"}
+        )
+        last_invoice = await self.db.invoice.find_first(
+            order={"invoice_date": "desc"}
+        )
+        
+        first_date = first_invoice.invoice_date.date() if first_invoice else None
+        last_date = last_invoice.invoice_date.date() if last_invoice else None
+        
+        return first_date, last_date
+
+    async def get_invoices_by_date(self, target_date: date) -> list:
+        """Get all invoices for a specific date with full details."""
+        target_datetime = datetime.combine(target_date, time.min, tzinfo=timezone.utc)
+        
+        invoices = await self.db.invoice.find_many(
+            where={
+                "invoice_date": target_datetime
+            },
+            include={
+                "employee": True,
+                "customer": True,
+                "items": {
+                    "include": {
+                        "product": True
+                    }
+                }
+            },
+            order={"invoice_number": "asc"}
+        )
+        
+        return invoices

@@ -1,0 +1,38 @@
+Act as an Expert Data Engineer specializing in NLP and RAG architectures.
+
+### Task
+Transform the provided JSON raw data into a cohesive, narrative Daily Journal. 
+
+### Context
+This output will be embedded into a Vector Database (ChromaDB/Supabase) for a RAG system. The goal is to ensure that entities (dates, amounts, project names, and actions) are grammatically linked so that semantic search can easily retrieve them.
+
+### Transformation Rules
+1. **No Bullet Points:** Write in full, flowing paragraphs.
+2. **Entity Linking:** Explicitly connect actions to their metadata (e.g., instead of "AWS: $45", write "An infrastructure expense of $45.50 was recorded for the AWS subscription").
+3. **Temporal Awareness:** Maintain the chronological order of the day.
+4. **Professional Tone:** Use a "Senior Developer Log" persona—concise but technically accurate.
+5. **Deduction:** If a category like "Infrastructure" is present, describe it as a functional area of the business.
+6. **Language:** The text produced by the JSON must be in spanish cause in this languahe the people will do the the RAG semantic search
+7. At the beginning of each journal day - add the date
+
+### Structural example of the text produced from the JSON
+
+DATE
+
+EMPLOYEE_NAME_1 (ID):
+
+What was sold that day
+Who did you serve that day
+The amount by sale
+Total amount sold by the employee
+Add important data that you see is relevant. 
+
+EMPLOYEE_NAME_2 (ID):
+
+Same info
+
+
+### Input JSON:
+all JSONs are here seed/invoices/daily_data. So you need to make 30 days journal. So for instance if you analyze this: "2026-03-02.json? then you need to create 2026-03-02.txt
+
+The daily journal must be created in a new folder -> seed/invoices/daily-journal

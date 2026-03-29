@@ -8,3 +8,7 @@ __pycache__
 *.pyz
 *.pywz
 *.pyzz
+
+# Generated invoice JSON files
+seed/invoices/daily_data/
+seed/invoices/daily-journal/
