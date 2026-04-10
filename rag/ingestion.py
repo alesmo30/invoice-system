@@ -81,16 +81,74 @@ def load_directory(dir_path: str) -> list[Document]:
     return documents
 
 
+def chunk_by_employee(doc: Document) -> list[Chunk]:
+    """
+    Divide un documento en chunks por empleado.
+    Cada chunk contiene: fecha + empleado + todas sus transacciones.
+    
+    Esta estrategia garantiza que:
+    - Cada empleado es un chunk separado
+    - Cada chunk tiene contexto temporal (fecha)
+    - No se diluye la relevancia semántica mezclando empleados
+    
+    Args:
+        doc: Documento a dividir en chunks
+    
+    Returns:
+        Lista de chunks (1 chunk por empleado)
+    """
+    import re
+    
+    chunks: list[Chunk] = []
+    content = doc.content
+    
+    # Patrón para identificar bloques de empleado
+    # Busca: fecha + nombre + UUID + contenido hasta el próximo empleado o fin
+    pattern = r'(\d+ de \w+ de \d{4}\s*\n\s*\n\s*[A-Z][a-z]+ [A-Z][a-z]+ \([a-f0-9-]{36}\):.*?)(?=\n\s*\n\s*\d+ de \w+ de \d{4}\s*\n\s*\n\s*[A-Z][a-z]+ [A-Z][a-z]+|$)'
+    
+    matches = re.finditer(pattern, content, re.DOTALL)
+    
+    for i, match in enumerate(matches):
+        chunk_content = match.group(1).strip()
+        
+        # Extraer nombre del empleado para metadata
+        employee_match = re.search(r'([A-Z][a-z]+ [A-Z][a-z]+) \(([a-f0-9-]{36})\):', chunk_content)
+        employee_name = employee_match.group(1) if employee_match else f"Employee_{i}"
+        employee_id = employee_match.group(2) if employee_match else None
+        
+        # Extraer fecha
+        date_match = re.search(r'(\d+ de \w+ de \d{4})', chunk_content)
+        date_str = date_match.group(1) if date_match else None
+        
+        chunks.append(
+            Chunk(
+                content=chunk_content,
+                metadata={
+                    **doc.metadata,
+                    "chunk_index": i,
+                    "employee_name": employee_name,
+                    "employee_id": employee_id,
+                    "date": date_str,
+                    "chunk_type": "employee_report"
+                },
+            )
+        )
+    
+    return chunks
+
+
 def chunk_by_paragraphs(
     doc: Document, max_chunk_size: int = 2100, separator: str = "\n\n"
 ) -> list[Chunk]:
     """
     Divide un documento en chunks por párrafos sin cortar a mitad de párrafo.
     
+    NOTA: Para journals de empleados, se recomienda usar chunk_by_employee() 
+    que garantiza 1 chunk = 1 empleado.
+    
     Args:
         doc: Documento a dividir en chunks
         max_chunk_size: Tamaño máximo del chunk en caracteres (default: 2100)
-                       Este tamaño captura el 99% de bloques de empleado completos
         separator: Separador de párrafos (default: "\n\n")
     
     Returns:

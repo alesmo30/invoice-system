@@ -4,7 +4,7 @@ import shutil
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from rag.ingestion import load_directory, chunk_by_paragraphs
+from rag.ingestion import load_directory, chunk_by_employee
 from rag.vectorstore import create_vectorstore, index_chunks, search
 
 load_dotenv()
@@ -99,11 +99,11 @@ def main() -> None:
 
     # Paso 2: Chunking
     print(f"\n{MAGENTA}{BOLD}{'=' * 80}")
-    print(f"PASO 2: Chunking por párrafos (max_chunk_size=2100)")
+    print(f"PASO 2: Chunking por empleado (1 chunk = 1 empleado)")
     print(f"{'=' * 80}{RESET}")
     all_chunks = []
     for doc in documents:
-        chunks = chunk_by_paragraphs(doc, max_chunk_size=2100)
+        chunks = chunk_by_employee(doc)
         all_chunks.extend(chunks)
         print(f"  {MAGENTA}{doc.metadata['source']}: {BOLD}{len(chunks)} chunks{RESET}")
 
