@@ -71,9 +71,20 @@ python seed/products/seed_products.py
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
-pip install prisma python-dotenv supabase
+# Install all project dependencies from requirements.txt
+pip install -r requirements.txt
 ```
+
+**What `pip install -r requirements.txt` does:**
+
+This command installs all the Python packages required for the project in one go. The `requirements.txt` file lists all dependencies including:
+- **LLM Providers**: google-genai, groq, openai
+- **Data Processing**: pydantic, numpy, pypdf, tiktoken
+- **Vector Store**: chromadb, sentence-transformers, rank-bm25
+- **UI Framework**: streamlit
+- **Utilities**: python-dotenv, rich, matplotlib
+
+Instead of manually installing each package one by one, this single command ensures your environment has everything needed to run the invoice system.
 
 ### 2. Configure Environment Variables
 

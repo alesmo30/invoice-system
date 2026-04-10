@@ -30,6 +30,26 @@ def get_date_in_spanish(date_str: str) -> str:
     }
     return f"{date_obj.day} de {months[date_obj.month]} de {date_obj.year}"
 
+def wrap_text_to_80(text: str) -> str:
+    """Wrap text to maximum 80 characters per line."""
+    words = text.split()
+    lines = []
+    current_line = ""
+    
+    for word in words:
+        test_line = current_line + (" " if current_line else "") + word
+        if len(test_line) <= 80:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    
+    if current_line:
+        lines.append(current_line)
+    
+    return '\n'.join(lines)
+
 def group_invoices_by_employee(data: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
     """Group invoices by employee."""
     employee_invoices = defaultdict(list)
@@ -68,21 +88,24 @@ def calculate_employee_totals(invoices: List[Dict[str, Any]]) -> Dict[str, Any]:
         'num_invoices': len(invoices)
     }
 
-def generate_employee_section(employee_data: Dict[str, Any], employee_stats: Dict[str, Any]) -> str:
+def generate_employee_section(employee_data: Dict[str, Any], employee_stats: Dict[str, Any], date_str: str = None) -> str:
     """Generate the Spanish text section for an employee."""
     employee = employee_data['employee']
     employee_name = f"{employee['first_name']} {employee['last_name']}"
     employee_id = employee['id']
     
-    # Start employee section
-    text = f"{employee_name} ({employee_id}):\n\n"
+    # Start employee section with optional date
+    text = ""
+    if date_str:
+        text = f"{date_str}\n\n"
+    text += f"{employee_name} ({employee_id}):\n\n"
     
     # Products sold section
     products_by_category = defaultdict(list)
     for product in employee_stats['products_sold']:
         products_by_category[product['category']].append(product)
     
-    text += "Durante esta jornada laboral se registraron las siguientes ventas: "
+    paragraph = "Durante esta jornada laboral se registraron las siguientes ventas: "
     
     category_descriptions = []
     for category, products in products_by_category.items():
@@ -98,18 +121,18 @@ def generate_employee_section(employee_data: Dict[str, Any], employee_stats: Dic
         elif category == "Accessories":
             category_descriptions.append(f"{product_count} accesorios por un valor total de {format_currency(str(total_category_amount))}")
     
-    text += ", ".join(category_descriptions) + ". "
+    paragraph += ", ".join(category_descriptions) + ". "
     
     # Customers served section
     if len(employee_stats['customers_served']) == 1:
-        text += f"El cliente atendido durante el día fue {employee_stats['customers_served'][0]}. "
+        paragraph += f"El cliente atendido durante el día fue {employee_stats['customers_served'][0]}. "
     else:
         customers_list = ", ".join(employee_stats['customers_served'][:-1])
         last_customer = employee_stats['customers_served'][-1]
-        text += f"Los clientes atendidos durante el día fueron {customers_list} y {last_customer}. "
+        paragraph += f"Los clientes atendidos durante el día fueron {customers_list} y {last_customer}. "
     
     # Detailed sales breakdown
-    text += "El desglose detallado de las transacciones incluye: "
+    paragraph += "El desglose detallado de las transacciones incluye: "
     
     sale_details = []
     for i, product in enumerate(employee_stats['products_sold'], 1):
@@ -118,12 +141,14 @@ def generate_employee_section(employee_data: Dict[str, Any], employee_stats: Dic
         else:
             sale_details.append(f"la venta de {product['name']} a {product['customer']} por {format_currency(str(product['line_total']))}")
     
-    text += ", ".join(sale_details) + ". "
+    paragraph += ", ".join(sale_details) + ". "
     
     # Total amount section
-    text += f"El monto total de ventas generadas por {employee_name} durante esta jornada fue de {format_currency(str(employee_stats['total_amount']))} a través de {employee_stats['num_invoices']} transacciones comerciales."
+    paragraph += f"El monto total de ventas generadas por {employee_name} durante esta jornada fue de {format_currency(str(employee_stats['total_amount']))} a través de {employee_stats['num_invoices']} transacciones comerciales."
     
-    text += "\n\n"
+    # Wrap the paragraph to 80 characters
+    wrapped_paragraph = wrap_text_to_80(paragraph)
+    text += wrapped_paragraph + "\n\n"
     
     return text
 
@@ -136,17 +161,18 @@ def transform_json_to_journal(json_file_path: str) -> str:
     date_str = first_invoice['invoice_date']
     spanish_date = get_date_in_spanish(date_str)
     
-    # Start journal with date
-    journal_text = f"{spanish_date}\n\n"
-    
     # Group invoices by employee
     employee_invoices = group_invoices_by_employee(data)
     
-    # Generate section for each employee
+    # Generate section for each employee (each with date prefix)
+    journal_sections = []
     for employee_id, invoices in employee_invoices.items():
         employee_stats = calculate_employee_totals(invoices)
-        employee_section = generate_employee_section(invoices[0], employee_stats)
-        journal_text += employee_section
+        employee_section = generate_employee_section(invoices[0], employee_stats, spanish_date)
+        journal_sections.append(employee_section)
+    
+    # Join all sections with double newline separator
+    journal_text = "\n".join(journal_sections)
     
     return journal_text.strip()
 
