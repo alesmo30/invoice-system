@@ -54,6 +54,40 @@ def index_chunks(
     return indexed
 
 
+def load_chunks_from_collection(
+    collection: chromadb.Collection, batch_size: int = 500
+) -> list[Chunk]:
+    """
+    Reconstruye la lista de Chunk desde Chroma (ids = chunk_id).
+    Necesario para BM25 en HybridRetriever cuando no se vuelve a ejecutar la indexación.
+    """
+    chunks: list[Chunk] = []
+    offset = 0
+    while True:
+        batch = collection.get(
+            include=["documents", "metadatas"],
+            limit=batch_size,
+            offset=offset,
+        )
+        ids = batch.get("ids") or []
+        if not ids:
+            break
+        docs = batch.get("documents") or []
+        metas = batch.get("metadatas") or []
+        for i, cid in enumerate(ids):
+            doc = docs[i] if i < len(docs) else None
+            meta = metas[i] if i < len(metas) else None
+            chunks.append(
+                Chunk(
+                    content=doc if isinstance(doc, str) else "",
+                    metadata=dict(meta) if isinstance(meta, dict) else {},
+                    chunk_id=cid,
+                )
+            )
+        offset += len(ids)
+    return chunks
+
+
 def search(
     collection: chromadb.Collection,
     query: str,

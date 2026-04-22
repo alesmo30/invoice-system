@@ -384,19 +384,31 @@ def compress_with_reranker(
 # 9. Pipeline completo: Advanced RAG Query
 # ---------------------------------------------------------------------------
 
-def advanced_rag_query(collection, chunks: list[Chunk], query: str) -> str:
-    """Pipeline completo de RAG Avanzado.
+def advanced_rag_query(
+    collection,
+    chunks: list[Chunk],
+    query: str,
+    *,
+    compress_with_llm: bool = True,
+) -> str:
+    """Pipeline de RAG avanzado.
 
-    1. Multi-query: genera reformulaciones
-    2. Búsqueda híbrida: por cada query, busca con HybridRetriever
-    3. Deduplicar resultados por chunk_id
-    4. Reranking: reordena candidatos únicos con cross-encoder
-    5. Compresión: extrae solo lo relevante con LLM
-    6. Genera respuesta final con LLM
+    Siempre: multi-query → búsqueda híbrida por reformulación → deduplicar
+    chunks → cross-encoder rerank → respuesta con LLM.
+
+    Si ``compress_with_llm`` es True, antes de generar se llama a
+    :func:`compress_context` para acotar el contexto (más llamadas al LLM,
+    a veces peor rendimiento). Si es False, se concatena el texto de los
+    chunks rerankeados y se genera en un solo paso (cuatro etapas visibles).
     """
     # 1. Multi-query
     queries = generate_multi_queries(query)
-    print(f"  Multi-query: {len(queries)} queries generadas")
+    if compress_with_llm:
+        print(f"  Multi-query: {len(queries)} queries generadas \n")
+        print(f"  Multi-query: queries generated: {queries}")
+    else:
+        print(f"  [1] Multi-query: {len(queries)} reformulaciones \n")
+        print(f"  Multi-query: reformulations: {queries}")
 
     # 2. Búsqueda híbrida por cada query
     hybrid = HybridRetriever(collection, chunks)
@@ -405,29 +417,46 @@ def advanced_rag_query(collection, chunks: list[Chunk], query: str) -> str:
         results = hybrid.search(q, top_k=5)
         all_results.extend(results)
 
-    # 3. Deduplicar por chunk_id
+    # Deduplicar por chunk_id (fusionar resultados de varias queries)
     seen: set[str] = set()
     unique_results: list[SearchResult] = []
     for r in all_results:
         if r.chunk_id not in seen:
             seen.add(r.chunk_id)
             unique_results.append(r)
-    print(f"  Candidatos únicos: {len(unique_results)}")
+    if compress_with_llm:
+        print(f"  Candidatos únicos: {len(unique_results)}")
+    else:
+        print(
+            f"  [2] Hybrid search: {len(queries)} búsquedas → "
+            f"{len(unique_results)} candidatos únicos"
+        )
 
-    # 4. Reranking
+    # 3. Reranking
     reranked = rerank(query, unique_results, top_k=5)
-    print(f"  Rerankeados: {len(reranked)}")
+    if compress_with_llm:
+        print(f"  Rerankeados: {len(reranked)}")
+    else:
+        print(f"  [3] Re-ranking: top {len(reranked)} chunks")
 
-    # 5. Compresión de contexto
     chunk_texts = [r.content for r in reranked]
-    compressed = compress_context(query, chunk_texts)
-    print(f"  Contexto comprimido: {len(compressed)} chars")
 
-    # 6. Generar respuesta final
+    if compress_with_llm:
+        # Compresión de contexto con LLM
+        compressed = compress_context(query, chunk_texts)
+        print(f"  Contexto comprimido: {len(compressed)} chars")
+        context_for_llm = compressed
+    else:
+        context_for_llm = "\n\n---\n\n".join(chunk_texts)
+        print(
+            f"  [4] Generar: contexto {len(context_for_llm)} chars "
+            f"(chunks rerankeados, sin compresión LLM)"
+        )
+
     final_prompt = (
         "Responde la siguiente pregunta usando SOLO el contexto proporcionado.\n"
         'Si no puedes responder con el contexto dado, di "No tengo suficiente información".\n\n'
-        f"Contexto:\n{compressed}\n\n"
+        f"Contexto:\n{context_for_llm}\n\n"
         f"Pregunta: {query}\n\n"
         "Respuesta:"
     )

@@ -10,5 +10,8 @@ __pycache__
 *.pyzz
 
 # Generated invoice JSON files
-seed/invoices/daily_data/
-seed/invoices/daily-journal/
+seed/
+
+.agents/
+
+chroma_db_pipeline_completo/
