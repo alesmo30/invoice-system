@@ -306,9 +306,12 @@ def _get_cross_encoder():
     """Carga el cross-encoder (lazy, singleton)."""
     global _cross_encoder
     if _cross_encoder is None:
-        print("  Cargando cross-encoder (primera vez puede tardar unos minutos)...")
         from sentence_transformers import CrossEncoder
-        _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+        from rag.ml_quiet import quiet_ml_load
+
+        with quiet_ml_load():
+            _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
     return _cross_encoder
 
 

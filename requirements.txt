@@ -13,3 +13,10 @@ rank-bm25
 tiktoken
 pypdf
 numpy
+langchain_openai
+langchain_core
+langgraph
+supabase
+psycopg2-binary
+sqlparse
+fpdf2 

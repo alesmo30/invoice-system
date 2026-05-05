@@ -15,3 +15,9 @@ seed/
 .agents/
 
 chroma_db_pipeline_completo/
+
+agents-guide/
+
+# Cotizaciones PDF generadas al aprobar
+pdf/approved_quotes/
+pdfs/
