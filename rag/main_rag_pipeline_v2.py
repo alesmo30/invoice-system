@@ -158,21 +158,63 @@ def clear_rag_cache() -> None:
     _chunks = []
 
 
-def _run_rag_with_stdout_captured(
+def _run_rag_worker(
     collection,
     chunks,
     q: str,
     *,
     compress_with_llm: bool,
-) -> str:
+    return_contexts: bool,
+    score_faithfulness: bool,
+    score_context_precision: bool,
+) -> str | tuple[str, list[str]] | tuple[str, dict[str, float | None]]:
+    """Ejecuta RAG bajo stdout capturado; métricas RAGAS en el mismo hilo (misma espera del spinner)."""
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        return advanced_rag_query(
+        need_ctx = return_contexts or score_faithfulness or score_context_precision
+        raw = advanced_rag_query(
             collection,
             chunks,
             q,
             compress_with_llm=compress_with_llm,
+            return_contexts=need_ctx,
         )
+        if isinstance(raw, tuple):
+            answer, contexts = raw
+        else:
+            answer, contexts = raw, []
+
+        if score_faithfulness or score_context_precision:
+            scores: dict[str, float | None] = {}
+            if score_faithfulness:
+                try:
+                    from rag.ragas_eval_llm import compute_faithfulness_score
+
+                    scores["faithfulness"] = compute_faithfulness_score(
+                        q, answer, list(contexts)
+                    )
+                except Exception:
+                    logger.exception("RAG faithfulness (RAGAS) falló en worker")
+                    scores["faithfulness"] = None
+            if score_context_precision:
+                try:
+                    from rag.ragas_eval_llm import (
+                        compute_context_precision_from_response_score,
+                    )
+
+                    scores["context_precision"] = (
+                        compute_context_precision_from_response_score(
+                            q, answer, list(contexts)
+                        )
+                    )
+                except Exception:
+                    logger.exception("RAG context precision (RAGAS) falló en worker")
+                    scores["context_precision"] = None
+            return answer, scores
+
+        if return_contexts:
+            return answer, list(contexts)
+        return answer
 
 
 def _spin_thinking_while(tty, future) -> None:
@@ -204,13 +246,25 @@ def answer_rag_query(
     *,
     compress_with_llm: bool = False,
     show_thinking: bool | None = None,
-) -> str:
+    return_contexts: bool = False,
+    score_faithfulness: bool = False,
+    score_context_precision: bool = False,
+) -> str | tuple[str, list[str]] | tuple[str, dict[str, float | None]]:
     """
     Ejecuta el pipeline completo (multi-query → hybrid → rerank → generar) sobre ``question``.
     No hace input(); requiere índice existente o una indexación previa vía CLI.
 
     Con ``show_thinking=True`` (por defecto si stdout es TTY) muestra una animación “Thinking”
-    mientras el pipeline corre en segundo plano.
+    mientras el pipeline corre en segundo plano (incluye métricas RAGAS si
+    ``score_faithfulness`` y/o ``score_context_precision``).
+
+    Con ``return_contexts=True`` devuelve ``(respuesta, lista de chunks rerankeados)`` para
+    métricas manuales. Si además pide métricas, ``return_contexts`` solo aplica al formato de
+    salida cuando ninguna métrica está activa; con métricas activas el retorno es
+    ``(respuesta, dict)``.
+
+    Con métricas activas devuelve ``(respuesta, {"faithfulness": ..., "context_precision": ...})``
+    con solo las claves calculadas; valores ``None`` si una métrica falló.
     """
     q = (question or "").strip()
     if not q:
@@ -222,11 +276,14 @@ def answer_rag_query(
 
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(
-            _run_rag_with_stdout_captured,
+            _run_rag_worker,
             collection,
             chunks,
             q,
             compress_with_llm=compress_with_llm,
+            return_contexts=return_contexts,
+            score_faithfulness=score_faithfulness,
+            score_context_precision=score_context_precision,
         )
         if _show and tty.isatty():
             _spin_thinking_while(tty, future)

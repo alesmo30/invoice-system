@@ -393,7 +393,8 @@ def advanced_rag_query(
     query: str,
     *,
     compress_with_llm: bool = True,
-) -> str:
+    return_contexts: bool = False,
+) -> str | tuple[str, list[str]]:
     """Pipeline de RAG avanzado.
 
     Siempre: multi-query → búsqueda híbrida por reformulación → deduplicar
@@ -403,6 +404,9 @@ def advanced_rag_query(
     :func:`compress_context` para acotar el contexto (más llamadas al LLM,
     a veces peor rendimiento). Si es False, se concatena el texto de los
     chunks rerankeados y se genera en un solo paso (cuatro etapas visibles).
+
+    Si ``return_contexts`` es True, devuelve ``(respuesta, chunk_texts)`` donde
+    ``chunk_texts`` son los contenidos rerankeados (útiles para Faithfulness).
     """
     # 1. Multi-query
     queries = generate_multi_queries(query)
@@ -463,4 +467,7 @@ def advanced_rag_query(
         f"Pregunta: {query}\n\n"
         "Respuesta:"
     )
-    return call_llm(final_prompt)
+    answer = call_llm(final_prompt)
+    if return_contexts:
+        return answer, list(chunk_texts)
+    return answer

@@ -1,0 +1,20 @@
+flowchart TB
+  QD["quote_draft_agent<br/>(dentro: run_quote_react_agent<br/>Thought / Action / Observation)"] --> RQD{_route_after_quote_draft<br/>hay cotizacion_response?}
+
+  RQD -->|sí: error recuperado<br/>con texto cliente| END1((END))
+
+  RQD -->|no: cotizacion_draft listo| QR[quote_review_agent]
+
+  QR --> MAX{¿ronda mayor o igual 12?<br/>QUOTE_REVIEW_MAX_ROUNDS}
+  MAX -->|sí| END_AUTO[cotizacion_response = draft + aviso máximo<br/>sin más HITL]
+  MAX -->|no| HITL_Q{{interrupt<br/>quote_review}}
+
+  HITL_Q --> DEC{decisión vendedor}
+  DEC -->|approved: true| PDF[write_pdf_on_quote_approval<br/>fpdf2 → pdfs/]
+  PDF --> END2((END))
+  DEC -->|replacement_markdown<br/>nuevo borrador| QR
+  DEC -->|feedback texto| REGEN[cotización_react_input<br/>pregunta aumentada]
+  REGEN --> QD
+
+  style HITL_Q fill:#f9f,stroke:#333
+  style DEC fill:#eef,stroke:#333

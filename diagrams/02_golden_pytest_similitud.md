@@ -1,0 +1,70 @@
+# Golden set → pytest → similitud semántica
+
+Flujo técnico alineado con `tests/rag/test_golden_semantic_similarity.py`, `golden_semantic_report.py` y `tests/rag/conftest.py`.
+
+## 1. De dónde sale el golden y cómo se evalúa
+
+```mermaid
+flowchart TB
+  subgraph origen["Origen opcional del golden"]
+    DOCS[(seed/manual/<br/>.md)]
+    GG["python -m rag.generate_golden_ragas<br/>GROQ_API_KEY obligatorio"]
+    DOCS --> GG
+    GG --> JL["rag/fixtures/golden/*.jsonl<br/>líneas: id, user_input, reference<br/>(+ campos Ragas opcionales)"]
+  end
+
+  subgraph prereq["Puertas de pytest (gates)"]
+    R1{RUN_RAG_GOLDEN=1?}
+    R2{GROQ_API_KEY<br/>para generar respuesta RAG?}
+    R3{"chroma_db_pipeline_completo/<br/>existe?"}
+    R4{"¿hay líneas válidas<br/>JSONL?"}
+    R1 --> R2 --> R3 --> R4
+    R4 -->|no| SKIP[pytest.skip con motivo]
+  end
+
+  subgraph loop["Por cada caso parametrizado"]
+    P[user_input como pregunta]
+    REF[reference esperada]
+    P --> AR["answer_rag_query<br/>main_rag_pipeline_v2<br/>compress_with_llm=False"]
+    REF --> EB
+    AR --> ANS[respuesta RAG texto]
+    ANS --> EB["get_embeddings_batch<br/>sentence-transformers"]
+    EB --> COS[cosine_similarity<br/>vector REF vs vector ANS]
+    COS --> GATE{sim ≥ RAG_GOLDEN_MIN_COSINE<br/>default 0.65}
+    GATE -->|sí/no| REC[record_similarity_case<br/>GoldenSemanticRow]
+    GATE -->|assert| PASS_FAIL[PASS / AssertionError<br/>con contexto truncado]
+  end
+
+  JL --> loop
+  R4 -->|sí| loop
+
+  subgraph reporte["Cierre sesión pytest"]
+    SF[pytest_sessionfinish]
+    TXT["golden_similarity_pytest_summary.txt<br/>bloques timestamp"]
+    OV{RAG_GOLDEN_SUMMARY_OVERWRITE?}
+    SF --> OV
+    OV --> TXT
+  end
+
+  REC --> SF
+```
+
+## 2. Qué modelo mide la “similitud” (no es el LLM generador del golden)
+
+```mermaid
+flowchart LR
+  subgraph embed["Embeddings locales (tests + index coherente con proyecto)"]
+    M["paraphrase-multilingual-MiniLM-L12-v2"]
+    M --> VREF[vec reference]
+    M --> VANS[vec answer_rag]
+  end
+  VREF --> CS[⋅ cos similitud coseno]
+  VANS --> CS
+  CS --> U["Umbral configurable<br/>RAG_GOLDEN_MIN_COSINE"]
+```
+
+### Notas para la presentación
+
+- **Golden** sintetiza pares *pregunta / respuesta de referencia* (puede generarse con Ragas desde documentos).
+- La **métrica de pytest** compara embeddings de la referencia contra la respuesta **real del RAG** (mismo índice Chroma que en producción de demostración), no texto literal (“soft” semantic match).
+- **Separación Ragas supervisor** (`RAG_FAITHFULNESS` etc.) ≠ **golden pytest**: el primero opcional después de cada `rag_agent`; el segundo es suite reproducible sobre JSONL acumulado.

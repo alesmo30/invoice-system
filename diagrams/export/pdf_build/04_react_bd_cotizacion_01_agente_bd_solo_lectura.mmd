@@ -1,0 +1,15 @@
+sequenceDiagram
+  participant U as Pregunta usuario
+  participant M as Modelo Groq
+  participant T as Herramientas Python
+  participant DB as Postgres / Supabase
+
+  U ->> M: System + mensaje (formato Thought/Action)
+  loop hasta Finish o máximo pasos
+    M ->> M: Thought N
+    M ->> T: Action: get_database_schema o execute_readonly_query
+    T ->> DB: SELECT validado sólo lectura
+    DB -->> T: filas / error
+    T -->> M: Observation N
+  end
+  M -->> U: Finish[respuesta natural en español]

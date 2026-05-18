@@ -57,6 +57,9 @@ class CustomerState(TypedDict):
     cotizacion_react_input: NotRequired[str]
     # PDF fpdf2 tras aprobación vendedor (ruta absoluta o vacío)
     cotizacion_pdf_path: NotRequired[str]
+    # RAGAS (opcional): métricas tras rag_agent si los env están activos
+    rag_faithfulness: NotRequired[float]
+    rag_context_precision: NotRequired[float]
     # Respuesta final
     final_response: str
 
@@ -82,6 +85,11 @@ check_categoritzation_llm = ChatOpenAI(
 )
 
 CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.99
+
+
+def _env_flag_enabled(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in ("1", "true", "yes", "on")
+
 
 # Rondas máximas revisión vendedor ↔ cotización (interrupt).
 QUOTE_REVIEW_MAX_ROUNDS = 12
@@ -446,8 +454,29 @@ def rag_agent(state: CustomerState) -> dict:
     try:
         from rag.main_rag_pipeline_v2 import answer_rag_query
 
-        answer = answer_rag_query(q, compress_with_llm=False)
-        return {"rag_query_response": answer}
+        out: dict = {}
+        fw_on = _env_flag_enabled("RAG_FAITHFULNESS")
+        cp_on = _env_flag_enabled("RAG_CONTEXT_PRECISION")
+        if fw_on or cp_on:
+            raw = answer_rag_query(
+                q,
+                compress_with_llm=False,
+                score_faithfulness=fw_on,
+                score_context_precision=cp_on,
+            )
+            if isinstance(raw, tuple) and len(raw) == 2 and isinstance(raw[1], dict):
+                answer, scores = raw[0], raw[1]
+                out["rag_query_response"] = answer
+                if scores.get("faithfulness") is not None:
+                    out["rag_faithfulness"] = float(scores["faithfulness"])
+                if scores.get("context_precision") is not None:
+                    out["rag_context_precision"] = float(scores["context_precision"])
+            else:
+                out["rag_query_response"] = str(raw)
+        else:
+            answer = answer_rag_query(q, compress_with_llm=False)
+            out["rag_query_response"] = answer
+        return out
     except Exception:
         logger.exception("RAG worker: fallo al ejecutar el pipeline")
         fallback = llm.invoke([

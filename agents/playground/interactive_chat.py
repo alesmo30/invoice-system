@@ -5,6 +5,7 @@ Mantiene los prompts y el ciclo de entrada separados del grafo.
 
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Callable
 
@@ -12,6 +13,8 @@ _CYAN = "\033[36m"
 _RESET = "\033[0m"
 _BL = "\033[1m"
 _MAG = "\033[95m"
+_GOLD = "\033[93m"
+_DIM = "\033[2m"
 def _prompt_done() -> str:
     """Pregunta si el usuario terminó de escribir. Devuelve 's', 'n' o 'exit'."""
     while True:
@@ -62,6 +65,29 @@ def _print_playground_result(result: dict) -> None:
     rag_ans = (result.get("rag_query_response") or "").strip()
     if rag_ans:
         print(f"\n{_CYAN}{rag_ans}{_RESET}\n")
+        rf = result.get("rag_faithfulness")
+        rcp = result.get("rag_context_precision")
+        if rf is not None:
+            try:
+                print(f"  {_BL}Faithfulness (RAGAS):{_RESET} {_GOLD}{float(rf):.3f}{_RESET}")
+            except (TypeError, ValueError):
+                pass
+        if rcp is not None:
+            try:
+                print(
+                    f"  {_BL}Context precision (RAGAS, sin ref.):{_RESET} {_GOLD}{float(rcp):.3f}{_RESET}"
+                )
+            except (TypeError, ValueError):
+                pass
+        if rf is None and rcp is None:
+            fw = os.getenv("RAG_FAITHFULNESS", "").strip().lower()
+            cp = os.getenv("RAG_CONTEXT_PRECISION", "").strip().lower()
+            tr = ("1", "true", "yes", "on")
+            if fw not in tr and cp not in tr:
+                print(
+                    f"  {_DIM}(RAGAS: RAG_FAITHFULNESS=1 y/o RAG_CONTEXT_PRECISION=1 en .env){_RESET}"
+                )
+        print()
         return
 
     db_ans = (result.get("db_query_response") or "").strip()

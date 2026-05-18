@@ -1,0 +1,9 @@
+flowchart LR
+  subgraph embed["Embeddings locales (tests + index coherente con proyecto)"]
+    M["paraphrase-multilingual-MiniLM-L12-v2"]
+    M --> VREF[vec reference]
+    M --> VANS[vec answer_rag]
+  end
+  VREF --> CS[⋅ cos similitud coseno]
+  VANS --> CS
+  CS --> U["Umbral configurable<br/>RAG_GOLDEN_MIN_COSINE"]

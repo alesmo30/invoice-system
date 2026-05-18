@@ -1,0 +1,10 @@
+flowchart TB
+  Q[Pregunta cliente] --> R[Ronda ReAct: schema / SELECT products]
+  R -->|"precios sólo BD USD"| SUM[Resume líneas cantidad × unit_price]
+  SUM --> PHASE2[Fase siguiente: JSON Pydantic validado<br/>Markdown estructura cotización]
+  PHASE2 --> OUT[Borrador para quote_review_agent]
+
+  subgraph tools["Comparte utilidades DB con db_react"]
+    EX["execute_db_tool / parse_db_action"]
+  end
+  R --- tools

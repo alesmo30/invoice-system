@@ -1,0 +1,35 @@
+# Resumen similitud coseno RAG vs golden (pytest)
+timestamp_utc=2026-05-18T05:13:02.505477+00:00
+pytest_exitstatus=1
+umbral_cosine_minimo=0.650000
+lineas_catalogo_golden_total=57
+casos_ejecutados_con_metrica=57
+passed=42
+failed=15
+valor_min_cosine_observado=0.001431
+valor_max_cosine_observado=0.994932
+min_cosine_detalle=cos=0.001431; case_id=soporte-tecnico_10; golden=soporte-tecnico.jsonl; passed=0
+max_cosine_detalle=cos=0.994932; case_id=devoluciones_3; golden=devoluciones.jsonl; passed=1
+promedio_cosine=0.696560
+
+==============================================================================
+timestamp_utc=2026-05-18T05:21:12.150596+00:00
+# Resumen similitud coseno RAG vs golden (pytest)
+umbral_cosine_minimo=0.650000
+casos_ejecutados_con_metrica=57
+passed=48
+failed=9
+min_cosine_detalle=cos=0.024234; case_id=solicitudes-clientes_3; golden=solicitudes-clientes.jsonl; passed=0
+max_cosine_detalle=cos=0.980875; case_id=soporte-tecnico_8; golden=soporte-tecnico.jsonl; passed=1
+promedio_cosine=0.750544
+
+==============================================================================
+timestamp_utc=2026-05-18T18:24:38.925372+00:00
+# Resumen similitud coseno RAG vs golden (pytest)
+umbral_cosine_minimo=0.650000
+casos_ejecutados_con_metrica=57
+passed=44
+failed=13
+min_cosine_detalle=cos=0.001431; case_id=soporte-tecnico_10; golden=soporte-tecnico.jsonl; passed=0
+max_cosine_detalle=cos=0.994932; case_id=devoluciones_3; golden=devoluciones.jsonl; passed=1
+promedio_cosine=0.718799

@@ -1,0 +1,20 @@
+flowchart TB
+  START((START)) --> S[supervisor]
+  S -->|"Clasificación JSON<br/>solo un campo texto"| A["assess_categorization<br/>Groq verificador GROQ_MODEL_CHECK"]
+
+  A -->|"confianza menor que 0,99"| HITL_C{{interrupt classification_review}}
+  HITL_C -->|"resume: categoría humana<br/>extracted_question"| A
+
+  A -->|"confianza OK o tras HITL"| R{"route_after_supervisor<br/>prioridad fija"}
+
+  R -->|1 cotización| QD[quote_draft_agent]
+  R -->|2 RAG| RG[rag_agent]
+  R -->|3 BD| DB[db_agent]
+  R -->|4 saludo| GR[greeting_agent]
+  R -->|sin categoría| END1((END))
+
+  RG --> END_R((END))
+  DB --> END_D((END))
+  GR --> END_G((END))
+
+  style HITL_C fill:#f9f,stroke:#333

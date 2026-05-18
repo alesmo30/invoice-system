@@ -15,8 +15,13 @@ pypdf
 numpy
 langchain_openai
 langchain_core
+langchain_groq
 langgraph
+ragas==0.4.3
+rapidfuzz
+datasets>=2.14.0
 supabase
 psycopg2-binary
 sqlparse
-fpdf2 
+fpdf2
+pytest>=8.0.0

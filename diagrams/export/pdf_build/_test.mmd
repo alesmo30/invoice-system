@@ -1,0 +1,6 @@
+flowchart TB
+  START((START)) --> S[supervisor]
+  S --> A[assess_categorization]
+  A --> R{route}
+  R --> RG[rag_agent]
+  RG --> END_R((END))
